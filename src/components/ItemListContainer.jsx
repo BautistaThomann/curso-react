@@ -3,26 +3,23 @@ import { useState, useEffect } from "react";
 import { app } from "../firebaseConfig";
 import { getFirestore, collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { Item } from "./Item";
+import Swal from 'sweetalert2';
 
 export function ItemListContainer() {
 
     const [productos, setProductos] = useState([]);
-
     const resultado = useParams();
 
-    useEffect(() => { 
+    useEffect(() => {
         if (resultado.categoria) {
-            //traer productos por categoria
             handleTraerProductoPorCategoria();
-        } else{
-            //traer todos los productos
+        } else {
             handleTraerProducto();
         }
     }, [resultado.categoria]);
 
     const handleAgregarProducto = () => {
         const db = getFirestore(app);
-
         const coleccionProductos = collection(db, "productos");
 
         addDoc(coleccionProductos, {
@@ -32,72 +29,99 @@ export function ItemListContainer() {
             stock: 10,
             categoria: "perifericos",
             imagen: "/images/monitor-gamer.jpg"
-
+            // desde la misma base de datos agregue los productos a mano
         })
+        .then(() => {
+            Swal.fire({
+                title: '¡Producto agregado!',
+                text: 'El producto se agregó correctamente.',
+                icon: 'success',
+                confirmButtonText: 'Ok'
+            });
+        })
+        .catch(() => {
+            Swal.fire({
+                title: 'Error',
+                text: 'No se pudo agregar el producto.',
+                icon: 'error',
+                confirmButtonText: 'Ok'
+            });
+        });
     }
+
+    const mostrarLoader = (mensaje = 'Cargando productos...') => {
+        Swal.fire({
+            title: mensaje,
+            allowOutsideClick: false,
+            background: '#1e1e1e',
+            color: '#ffffff',       
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+    };
 
     const handleTraerProducto = () => {
         const db = getFirestore(app);
-
         const coleccionProductos = collection(db, "productos");
 
-        const pedido = getDocs(coleccionProductos)
+        mostrarLoader();
 
-        pedido
+        getDocs(coleccionProductos)
             .then((respuesta) => {
-                console.log("Salio todo bien")
-                
                 const productosFinales = [];
-
                 respuesta.forEach((producto) => {
-                    const productoFinal ={
+                    productosFinales.push({
                         id: producto.id,
                         ...producto.data()
-                    }
-
-                    productosFinales.push(productoFinal);
-                })
-
+                    });
+                });
                 setProductos(productosFinales);
-
+                Swal.close();
             })
             .catch(() => {
-                console.log("Error al traer los productos")
-            })
+                Swal.fire({
+                    title: 'Error',
+                    text: 'No se pudieron cargar los productos',
+                    icon: 'error',
+                    confirmButtonText: 'Ok'
+                });
+            });
     }
 
     const handleTraerProductoPorCategoria = () => {
         const db = getFirestore(app);
-
         const coleccionProductos = collection(db, "productos");
-
         const filtro = query(coleccionProductos, where("categoria", "==", resultado.categoria));
 
-        const pedido = getDocs(filtro)
+        mostrarLoader();
 
-        pedido
+        getDocs(filtro)
             .then((respuesta) => {
-                console.log("Salio todo bien")
-                
                 const productosFinales = [];
-
                 respuesta.forEach((producto) => {
-                    productosFinales.push(producto.data())
-                })
-
-                console.log(productosFinales)
+                    productosFinales.push({
+                        id: producto.id,
+                        ...producto.data()
+                    });
+                });
                 setProductos(productosFinales);
-
+                Swal.close();
             })
             .catch(() => {
-                console.log("Error al traer los productos")
-            })
+                Swal.fire({
+                    title: 'Error',
+                    text: 'No se pudieron cargar los productos',
+                    icon: 'error',
+                    confirmButtonText: 'Ok'
+                });
+            });
     }
 
     return (
         <>
             <div className="productos">
-                {/* por cada producto hace un div diferente */}
                 {productos.map((producto, indice) => (
                     <Item key={indice} producto={producto} />
                 ))}

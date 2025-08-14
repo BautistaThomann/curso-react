@@ -1,30 +1,54 @@
-import { Children, createContext, use } from 'react'
-import { useState } from 'react'
+import { createContext, useState } from 'react';
 
-//esta variable es el contexto
-export const CarritoContext = createContext()
+export const CarritoContext = createContext();
 
-//esta variable es el provider
-const CarritoProvider = CarritoContext.Provider
-
-//componente envoltorio
 export function CustomCarritoProvider({ children }) {
+    const [carrito, setCarrito] = useState([]);
+    const [cantidadTotal, setCantidadTotal] = useState(0);
+    const [precioTotal, setPrecioTotal] = useState(0);
 
-    const [cantidad, setCantidad] = useState(0)
+    const handleAgregarAlCarrito = (producto, cantidad = 1) => {
+        const existe = carrito.find(item => item.id === producto.id);
+        if (existe) {
+            setCarrito(
+                carrito.map(item =>
+                    item.id === producto.id
+                        ? { ...item, cantidad: item.cantidad + cantidad }
+                        : item
+                )
+            );
+        } else {
+            setCarrito([...carrito, { ...producto, cantidad }]);
+        }
+        setCantidadTotal(cantidadTotal + cantidad);
+        setPrecioTotal(precioTotal + producto.precio * cantidad);
+    };
 
-    //valor del contexto
-    const elValorDelcontexto = {
-        cantidad: cantidad,
-        carrito: [],
-        precioTotal: 0,
-        setCantidad: setCantidad
-    }
+    const handleEliminarDelCarrito = (producto) => {
+        const item = carrito.find(p => p.id === producto.id);
+        if (item) {
+            setCarrito(carrito.filter(p => p.id !== producto.id));
+            setCantidadTotal(cantidadTotal - item.cantidad);
+            setPrecioTotal(precioTotal - item.precio * item.cantidad);
+        }
+    };
 
-    //aca se retorna el provider
+    const handleVaciarCarrito = () => {
+        setCarrito([]);
+        setCantidadTotal(0);
+        setPrecioTotal(0);
+    };
+
     return (
-        //esta linea es la que le da el valor al contexto
-        <CarritoProvider value={elValorDelcontexto}>
+        <CarritoContext.Provider value={{
+            carrito,
+            cantidadTotal,
+            precioTotal,
+            handleAgregarAlCarrito,
+            handleEliminarDelCarrito,
+            handleVaciarCarrito
+        }}>
             {children}
-        </CarritoProvider>
-    )
+        </CarritoContext.Provider>
+    );
 }

@@ -1,48 +1,54 @@
+import { useContext, useState } from "react";
+import { CarritoContext } from "../providers/CarritoProvider.jsx";
 import { addDoc, collection, getFirestore } from "firebase/firestore";
 import { app } from "../firebaseConfig";
+import Swal from "sweetalert2";
 
-//componente hijo
-export function FormularioCarrito({ onSendForm }) {
+export function FormularioCarrito() {
+    const { carrito, handleVaciarCarrito, precioTotal } = useContext(CarritoContext);
+    const [nombre, setNombre] = useState("");
+    const [telefono, setTelefono] = useState("");
+    const [email, setEmail] = useState("");
 
-    const x = 1;
+    const handleCompra = async () => {
+        if (!nombre || !telefono || !email || carrito.length === 0) {
+            Swal.fire('Error', 'Completa todos los campos y agrega productos al carrito', 'error');
+            return;
+        }
 
-    const handleClick = () => {
-        onSendForm(x);
-    }
-
-    const handleCompra = () => {
         const db = getFirestore(app);
-
         const coleccionVentas = collection(db, "ventas");
 
-        addDoc(coleccionVentas, {
-            nombre: "Monitor 24 pulgadas",
-            precio: 150000,
-            descripcion: "Monitor LED de 24 pulgadas full HD",
-            stock: 10,
-            categoria: "perifericos",
-            imagen: "/images/monitor-gamer.jpg"
+        try {
+            const docRef = await addDoc(coleccionVentas, {
+                comprador: { nombre, telefono, email },
+                productos: carrito,
+                total: precioTotal,
+                fecha: new Date()
+            });
 
-        })
+            Swal.fire({
+                title: '¡Compra realizada!',
+                html: `Gracias por tu compra.<br><strong>Ticket:</strong> ${docRef.id}`,
+                icon: 'success',
+                confirmButtonText: 'Ok'
+            });
+
+            //funcion q limpia el carrito
+            handleVaciarCarrito();
+            setNombre(""); setTelefono(""); setEmail("");
+        } catch (error) {
+            Swal.fire('Error', 'No se pudo procesar la compra', 'error');
+        }
     }
 
     return (
         <div>
-            <form>
-                <div>
-                    <label>Nombre:</label>
-                    <input type="text" name="nombre" required placeholder="Ej: Bautista" />
-                </div>
-                <div>
-                    <label>Teléfono:</label>
-                    <input type="tel" name="telefono" required placeholder="Ej: 1123456789" />
-                </div>
-                <div>
-                    <label>Email:</label>
-                    <input type="email" name="email" required placeholder="Ej: ejemplo@email.com" />
-                </div>
-            </form>
-            <button onClick={handleCompra}>Agregar producto</button>
+            <h2>Formulario de compra</h2>
+            <input type="text" placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
+            <input type="tel" placeholder="Teléfono" value={telefono} onChange={e => setTelefono(e.target.value)} />
+            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+            <button onClick={handleCompra}>Confirmar compra</button>
         </div>
     )
 }
